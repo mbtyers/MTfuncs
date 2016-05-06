@@ -793,3 +793,54 @@ tperm <- function(x1,x2,alternative="2sided",reps=10000) {
   pval <- mean(pvec)
   return(pval)
 }
+
+#' Random Draws from a Truncated Normal Mixture
+#' @description Random Draws from a Truncated Normal Mixture
+#' @param length The number of observations to generate
+#' @param mu Vector of mean parameters, one for each normal component
+#' @param sig Vector of standard deviation parameters, one for each normal component
+#' @param p Vector of proportion parameters, one for each normal component.  These do not have to add to one, and can even represent counts.
+#' @param lwr Lower truncation bound
+#' @param upr Upper truncation bound
+#' @return A vector of random draws (numeric)
+#' @author Matt Tyers
+#' @examples
+#' draws <- rtruncmix(length=100000, mu=c(0,3,10), sig=c(.5,1,2),p=c(1,1,1), lwr=0, upr=8)
+#' plot(density(draws,bw=.1))
+#' @export
+rtruncmix <- function(length,mu=0,sig=1,p=1,lwr=-1,upr=1) {
+  if((length(mu) != length(sig)) | (length(mu) != length(p))) stop("parameter vectors must be the same length")
+  if(any(p<=0)) stop("values of p must be positive and nonzero")
+  p <- p/sum(p)
+  
+  xdisc <- seq(from=lwr,to=upr,length=1000)
+  ydisc <- rep(0,1000)
+  for(i in 1:length(p)) {
+    ydisc <- ydisc+p[i]*dnorm(xdisc,mean=mu[i],sd=sig[i])
+  }
+  maxdens <- max(ydisc)
+  prop <- sum(ydisc)/1000
+  
+  draw <- runif(1.5*length/prop,lwr,upr)
+  keepprob <- rep(0,length(draw))
+  for(i in 1:length(p)) {
+    keepprob <- keepprob + p[i]*dnorm(draw,mean=mu[i],sd=sig[i])
+  }
+  keepprob <- keepprob/max(keepprob)
+  keep <- rbinom(length(draw),1,keepprob)
+  outvec1 <- draw[keep==1]
+  outvec <- outvec1[1:length]
+  #   
+  #   # plot(xdisc,ydisc)
+  #   countup <- 0
+  #   outvec <- rep(NA,length)
+  #   while(countup<length) {
+  #     draw <- runif(1,lwr,upr)
+  #     keepprob <- .9*sum(p*dnorm(x=draw,mean=mu,sd=sig))/maxdens
+  #     if(rbinom(1,1,keepprob)==1) {
+  #       countup <- countup+1
+  #       outvec[countup] <- draw
+  #     }
+  #   }
+  return(outvec)
+}
